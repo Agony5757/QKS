@@ -50,19 +50,6 @@ class MyMNIST:
                 MyMNIST.train_lbl=MyMNIST.load_label(train_label)
                 MyMNIST.test_img=MyMNIST.load_data(test_data)
                 MyMNIST.test_lbl=MyMNIST.load_label(test_label)
-
-
-        
-        if standardize is True:
-
-            def _standardize(img):
-                E = np.mean(img, axis=1, keepdims=True)
-                Var = np.var(img, axis=1, keepdims=True)
-
-                return (img-E)/Var
-            
-            MyMNIST.train_img= _standardize(MyMNIST.train_img)
-            MyMNIST.test_img = _standardize(MyMNIST.test_img)
         
         return MyMNIST.train_img, MyMNIST.train_lbl, MyMNIST.test_img, MyMNIST.test_lbl
 
@@ -154,6 +141,19 @@ class MyMNIST:
         
         return picked_train_img, picked_train_lbl,picked_test_img,picked_test_lbl
 
+def _standardize(img, method = 'mean_var'):
+
+    if method == 'mean_var':
+        E = np.mean(img, axis=1, keepdims=True)
+        Var = np.var(img, axis=1, keepdims=True)
+
+        return (img-E)/Var
+
+    elif method == 'normalize':
+        return img / 256
+
+    else:
+        return NotImplementedError()
 
 def success_rate(predict_Y, test_Y):
     success=0
@@ -173,9 +173,12 @@ if __name__ == "__main__":
 
     timer.print_elapse("load data")
     
-    #train_img, train_lbl, test_img, test_lbl = MyMNIST.sample()
+    train_img, train_lbl, test_img, test_lbl = MyMNIST.sample()
 
-    #timer.print_elapse("sample data") 
+    timer.print_elapse("sample data") 
+
+    train_img = _standardize(train_img, 'normalize')
+    test_img  = _standardize(test_img, 'normalize')
 
     logreg = linear_model.LogisticRegression(C=1e5)
     logreg.fit(train_img, train_lbl)

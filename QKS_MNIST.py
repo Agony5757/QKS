@@ -1,4 +1,4 @@
-from MNIST import MyMNIST
+from MNIST import MyMNIST, _standardize
 import numpy as np
 import matplotlib.pyplot as plt
 
@@ -186,8 +186,12 @@ def tile_implementation():
 
     timer.init()
 
-    #train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5],dataset=MyMNIST.sample(train_sample=3000,test_sample=500))
+    #train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5],dataset=MyMNIST.sample(train_sample=3000,test_sample=1000))
     train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5])
+    train_img = _standardize(train_img, 'normalize')
+    test_img  = _standardize(test_img, 'normalize')
+
+    #train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5])
 
     #timer.print_elapse("dataset preparation")
 
@@ -195,10 +199,10 @@ def tile_implementation():
 
     #timer.print_elapse("Linear Baseline")
 
-    w_distribution = lambda size : np.random.normal(0, 1, size)
-    b_distribution = lambda size : np.random.uniform(0, 2* math.pi, size)
+    w_distribution = lambda size : np.random.normal(0, 0.5, size)
+    b_distribution = lambda size : np.random.uniform(0, math.pi, size)
 
-    _,_,training_circuit_parameter, test_circuit_parameter = preprocessing_mnist(train_img, test_img, E=500,
+    _,_,training_circuit_parameter, test_circuit_parameter = preprocessing_mnist(train_img, test_img, E=2000,
                                                                             w_distribution= w_distribution,
                                                                             b_distribution= b_distribution)                                                                            
 
