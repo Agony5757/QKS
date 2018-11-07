@@ -5,6 +5,8 @@ import matplotlib.pyplot as plt
 from kitchen_sinks_new import *
 from timer import timer
 from progress_bar import ProgressBar
+from ProgressBarGUI import Progress
+
 
 def preprocessing_mnist(training_feature, test_feature, **kwargs):
     '''
@@ -28,8 +30,7 @@ def preprocessing_mnist(training_feature, test_feature, **kwargs):
     train_tiles = np.empty((tile_len, tile_n, tile_n, n_train_samples))
     test_tiles = np.empty((tile_len, tile_n, tile_n, n_test_samples))
 
-    bar = ProgressBar()
-    bar.set_prefix('1/7 train split')
+    bar = Progress('train split')
     for i in range(n_train_samples):
         rawdata=training_feature[i] # (784,)
         split_tiles = split_tile(rawdata) #(196,2,2)
@@ -37,8 +38,9 @@ def preprocessing_mnist(training_feature, test_feature, **kwargs):
         for n in range(tile_n):
             for m in range(tile_n):
                 train_tiles[:,n,m,i]=split_tiles[:,n,m]
+    bar.destroy()
 
-    bar.set_prefix('2/7 test split')
+    bar = Progress('test split')
     for i in range(n_test_samples):
         rawdata=test_feature[i]
         split_tiles = split_tile(rawdata)
@@ -46,10 +48,11 @@ def preprocessing_mnist(training_feature, test_feature, **kwargs):
         for n in range(tile_n):
             for m in range(tile_n):
                 test_tiles[:,n,m,i]=split_tiles[:,n,m]
+    bar.destroy()
     
     E=1000
     if 'E' in kwargs:
-        E=kwargs['E']
+        E=math.ceil(kwargs['E'])
 
     w_distribution=lambda size: np.random.normal(scale=2,size=size)
     b_distribution=lambda size: np.random.uniform(low=0,high=2*math.pi,size=size)
@@ -65,9 +68,6 @@ def preprocessing_mnist(training_feature, test_feature, **kwargs):
 
     for i in range(tile_n):
         for j in range(tile_n):
-            bar.set_prefix('3/7 preprocess')
-            bar.log(i*tile_n/tile_n/tile_n)
-
             _,_,train_prmt,test_prmt=preprocessing(train_tiles[:,i,j,:],test_tiles[:,i,j,:], 
                                                     q=1, E=E, r=tile_len,
                                                     w_distribution= w_distribution,
@@ -182,52 +182,166 @@ def naive_implementation():
 
     print("QKS Success rate: {}".format(success_rate))
 
-def tile_implementation():
+def tile_implementation(**kwargs):
+
+    '''
+    ALL OPTIONS:
+        1. pick (default: [3,5])
+        2. sample (default: True)
+        3. (sample==True) train_sample (default: 3000)
+        4. (sample==True) test_sample  (default: 1000)
+        5. standardize (default: 'normalize')
+        6. w_dist_type (default: 'normal')
+        7. b_dist_type (default: 'uniform')
+        8. w_dist_param (default: (0, 0.5))
+        9. b_dist_param (default: (0, math.pi))
+        10. E (default: 2000)
+    '''
 
     timer.init()
 
-    #train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5],dataset=MyMNIST.sample(train_sample=3000,test_sample=1000))
-    train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5])
-    train_img = _standardize(train_img, 'normalize')
-    test_img  = _standardize(test_img, 'normalize')
+    pick_range = None
+    if 'pick' in kwargs:
+        pick_range = kwargs['pick']
+    else:
+        pick_range = [3,5]
 
-    #train_img, train_lbl, test_img, test_lbl = MyMNIST.pick([3,5])
+    is_sample = None
+    train_sample = None
+    test_sample = None
 
-    #timer.print_elapse("dataset preparation")
+    if 'sample' in kwargs:
+        is_sample = kwargs['sample']
+        if is_sample is True:
+            train_sample = kwargs['train_sample']
+            test_sample = kwargs['test_sample']        
+    else:
+        is_sample = True
+        train_sample = 3000
+        test_sample = 1000
 
-    #linear_baseline(train_img, train_lbl, test_img, test_lbl)
+    if is_sample:
+        train_img, train_lbl, test_img, test_lbl = \
+            MyMNIST.pick(pick_range ,dataset=MyMNIST.sample(train_sample=train_sample,test_sample=test_sample))
+    else:
+        train_img, train_lbl, test_img, test_lbl = MyMNIST.pick(pick_range)
 
-    #timer.print_elapse("Linear Baseline")
+    standardize = None 
+    if 'standardize' in kwargs:
+        standardize = kwargs['standardize']
+    else:
+        standardize = 'normalize'
 
-    w_distribution = lambda size : np.random.normal(0, 0.5, size)
-    b_distribution = lambda size : np.random.uniform(0, math.pi, size)
+    train_img = _standardize(train_img, standardize)
+    test_img  = _standardize(test_img, standardize)
 
-    _,_,training_circuit_parameter, test_circuit_parameter = preprocessing_mnist(train_img, test_img, E=2000,
+    w_distribution = None
+    b_distribution = None
+    w_dist_type = None
+    b_dist_type = None
+    w_dist_param = None
+    b_dist_param = None
+
+    if 'w_dist_type' in kwargs:
+        w_dist_type = kwargs['w_dist_type']
+    else:
+        w_dist_type = 'normal'
+
+    if 'w_dist_param' in kwargs:
+        w_dist_param = kwargs['w_dist_param']
+    else:
+        w_dist_param = (0,0.5)
+
+    if 'b_dist_type' in kwargs:
+        b_dist_type = kwargs['b_dist_type']
+    else:
+        b_dist_type = 'uniform'
+
+    if 'b_dist_param' in kwargs:
+        b_dist_param = kwargs['b_dist_param']
+    else:
+        b_dist_param = (0,math.pi)
+
+    if w_dist_type == 'normal':
+        w_distribution = lambda size : np.random.normal(w_dist_param[0], w_dist_param[1], size)
+    elif w_dist_type == 'uniform':
+        w_distribution = lambda size : np.random.uniform(w_dist_param[0], w_dist_param[1], size)
+
+    if b_dist_type == 'normal':
+        b_distribution = lambda size : np.random.normal(b_dist_param[0], b_dist_param[1], size)
+    elif b_dist_type == 'uniform':
+        b_distribution = lambda size : np.random.uniform(b_dist_param[0], b_dist_param[1], size)
+
+    E = 2000
+    if 'E' in kwargs:
+        E=kwargs['E']
+
+    _,_,training_circuit_parameter, test_circuit_parameter = preprocessing_mnist(train_img, test_img, E=E,
                                                                             w_distribution= w_distribution,
                                                                             b_distribution= b_distribution)                                                                            
 
-    timer.print_elapse("QKS preprocessing")
+    #timer.print_elapse("QKS preprocessing")
 
     raw_train_result,raw_test_result=circuit_run(training_circuit_parameter, 
                                                  test_circuit_parameter, 
                                                  select_ansatz=4)
 
-    timer.print_elapse("QKS circuit run")
+    #timer.print_elapse("QKS circuit run")
     
     raw_train_result=postprocessing(raw_train_result)
     raw_test_result=postprocessing(raw_test_result)
 
-    timer.print_elapse("QKS postprocessing")
+    #timer.print_elapse("QKS postprocessing")
 
     model = training(raw_train_result, train_lbl)
 
-    timer.print_elapse("QKS train")
+    #timer.print_elapse("QKS train")
 
     success_rate = testing(model, raw_test_result, test_lbl)
 
-    timer.print_elapse("QKS test")
+    #timer.print_elapse("QKS test")
 
-    print("QKS Success rate: {}".format(success_rate))
+    #print("QKS Success rate: {}".format(success_rate))
+
+    return success_rate
+
+from logger import *
+from ProgressBarGUI import *
+
+def scan_E_scale(E_range, scale_range):
+
+    logger.init(foldername='scan E-Scale',prefix='Scan2D')
+    logger.title('E, Scale, SuccessRate')    
+
+    #bar = Progress('Main Scan',on=True)
+    bar = ProgressBar()
+    
+    all=len(E_range)*len(scale_range)
+    i=1
+
+    for scale in scale_range:
+        for E in E_range:       
+            
+            bar.log( i/all )
+            success_rate = tile_implementation(pick=[3,5],
+                                sample=True,
+                                train_sample=3000,
+                                test_sample=1000,
+                                standardize='normalize',
+                                w_dist_type='normal',
+                                w_dist_param=(0, scale),
+                                b_dist_type= 'uniform',
+                                b_dist_param=(0, math.pi),
+                                E = E
+                            )
+            i+=1
+            data = (E, scale, success_rate)
+            logger.log(data)
+
+    logger.finalize()
 
 if __name__=='__main__':
-    tile_implementation()
+    
+    E_range = np.linspace(100,5000,num=20)
+    scale_range = np.linspace(0.01, 1, num=20)
+    scan_E_scale(E_range= E_range, scale_range=scale_range)

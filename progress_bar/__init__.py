@@ -4,9 +4,10 @@ import math
 class ProgressBar:
 
     def __init__(self):
+        
+        self.prefix=''
         self.time=0
         self.init_time=0
-        self.prefix=''
         self.last_print=0
 
     def set_prefix(self,prefix):

@@ -9,7 +9,7 @@ from sklearn import linear_model
 from timer import timer
 
 import progress_bar
-
+from ProgressBarGUI import *
 def preprocessing(training_feature, test_feature, **kwargs):
     '''
     N data (dim p)
@@ -113,22 +113,22 @@ def preprocessing(training_feature, test_feature, **kwargs):
 
     training_circuit_parameter=np.empty((q,E,training_feature_size))
 
-    bar = progress_bar.ProgressBar()
-    bar.set_prefix('4/7 preprocess train')
+    bar = Progress('preprocess train')
     for i in range(training_feature_size):
         bar.log(i/training_feature_size)
         for e in range(E):
             
             training_circuit_parameter[:,e,i]=beta[:,e]+(omega[:,:,e]).dot(training_feature[:,i])      
+    bar.destroy()
 
     test_circuit_parameter=np.empty((q,E,test_feature_size))
 
-    bar.set_prefix('5/7 preprocess train')
+    bar = Progress('preprocess test')
     for i in range(test_feature_size):
         bar.log(i/test_feature_size)
         for e in range(E):
             test_circuit_parameter[:,e,i]=beta[:,e]+(omega[:,:,e]).dot(test_feature[:,i]) 
-
+    bar.destroy()
     return omega, beta, training_circuit_parameter, test_circuit_parameter
 
 def circuit_ansatz_1(qubits, cbits, circuit_parameter):
@@ -252,8 +252,7 @@ def circuit_run(training_parameters, test_parameters, select_ansatz: int, **kwar
     qubits=qAlloc_many(n_qubit)
     cbits=cAlloc_many(n_cbits)
 
-    bar = progress_bar.ProgressBar()
-    bar.set_prefix('6/7 circuit run, train')
+    bar = Progress('circuit run, train')
     for i in range(n_train):
         for e in range(n_episode):
             bar.log( (e+ i*n_episode) / n_train / n_episode )
@@ -262,8 +261,9 @@ def circuit_run(training_parameters, test_parameters, select_ansatz: int, **kwar
 
             for _key in result:
                 raw_train_result[:,e,i]=np.array([int(_char) for _char in _key])
+    bar.destroy()
 
-    bar.set_prefix('7/7 circuit run, test')
+    bar = Progress('7/7 circuit run, test')
     for i in range(n_test):
         
         for e in range(n_episode):
@@ -273,6 +273,8 @@ def circuit_run(training_parameters, test_parameters, select_ansatz: int, **kwar
 
             for _key in result:
                 raw_test_result[:,e,i]=np.array([int(_char) for _char in _key])
+    
+    bar.destroy()
     
     finalize()
     return raw_train_result, raw_test_result
