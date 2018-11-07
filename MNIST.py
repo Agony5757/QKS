@@ -33,7 +33,8 @@ class MyMNIST:
              train_label="train-labels.idx1-ubyte",               
              test_data="t10k-images.idx3-ubyte",
              test_label="t10k-labels.idx1-ubyte",
-             reload=False):
+             reload=False,
+             standardize=True):
 
         MyMNIST.train_data=train_data
         MyMNIST.train_label=train_label
@@ -50,6 +51,19 @@ class MyMNIST:
                 MyMNIST.test_img=MyMNIST.load_data(test_data)
                 MyMNIST.test_lbl=MyMNIST.load_label(test_label)
 
+
+        
+        if standardize is True:
+
+            def _standardize(img):
+                E = np.mean(img, axis=1, keepdims=True)
+                Var = np.var(img, axis=1, keepdims=True)
+
+                return (img-E)/Var
+            
+            MyMNIST.train_img= _standardize(MyMNIST.train_img)
+            MyMNIST.test_img = _standardize(MyMNIST.test_img)
+        
         return MyMNIST.train_img, MyMNIST.train_lbl, MyMNIST.test_img, MyMNIST.test_lbl
 
     @staticmethod
@@ -82,8 +96,8 @@ class MyMNIST:
         return labels
 
     @staticmethod
-    def sample(train_sample=1000,test_sample=100):
-        MyMNIST.load()
+    def sample(train_sample=1000,test_sample=100, standardize=True):
+        MyMNIST.load(standardize=standardize)
         train_range=len(MyMNIST.train_img[:,0])
         train_range=range(train_range)
         train_d=np.random.choice(train_range, size=train_sample)
@@ -100,8 +114,9 @@ class MyMNIST:
 
     @staticmethod
     def pick(number_list,
-             dataset=None):
-        MyMNIST.load()
+             dataset=None,
+             standardize=True):
+        MyMNIST.load(standardize=standardize)
         train_img=None
         train_lbl=None
         test_img=None
@@ -158,9 +173,9 @@ if __name__ == "__main__":
 
     timer.print_elapse("load data")
     
-    train_img, train_lbl, test_img, test_lbl = MyMNIST.sample()
+    #train_img, train_lbl, test_img, test_lbl = MyMNIST.sample()
 
-    timer.print_elapse("sample data") 
+    #timer.print_elapse("sample data") 
 
     logreg = linear_model.LogisticRegression(C=1e5)
     logreg.fit(train_img, train_lbl)
