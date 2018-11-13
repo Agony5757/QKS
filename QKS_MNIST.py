@@ -196,6 +196,10 @@ def tile_implementation(**kwargs):
         8. w_dist_param (default: (0, 0.5))
         9. b_dist_param (default: (0, math.pi))
         10. E (default: 2000)
+
+    RETURNS:
+        1. Accuracy
+        2. Model
     '''
 
     timer.init()
@@ -303,7 +307,7 @@ def tile_implementation(**kwargs):
 
     #print("QKS Success rate: {}".format(success_rate))
 
-    return success_rate
+    return success_rate, model
 
 from logger import *
 from ProgressBarGUI import *
@@ -340,8 +344,34 @@ def scan_E_scale(E_range, scale_range):
 
     logger.finalize()
 
+from pickle import dump
+
 if __name__=='__main__':
-    
+    '''
     E_range = np.linspace(100,5000,num=20)
     scale_range = np.linspace(0.01, 1, num=20)
     scan_E_scale(E_range= E_range, scale_range=scale_range)
+    '''
+
+    pick_dataset = [0,1,2,3,4,5,6,7,8,9]
+
+    scale = 0.25
+    Episode = 5000
+    filename = 'SCALE {} EPISODE {}.model.qks'.format(scale,Episode)
+    print(filename)
+    success_rate, model = tile_implementation(pick=pick_dataset,
+                                sample=False,
+                                standardize='normalize',
+                                w_dist_type='normal',
+                                w_dist_param=(0, scale),
+                                b_dist_type= 'uniform',
+                                b_dist_param=(0, math.pi),
+                                E = Episode
+                            )
+
+    
+    with open(filename,'wb') as fp:
+        dump(model, fp)
+
+    print('Digits:', pick_dataset)
+    print('Accuracy:',success_rate)
